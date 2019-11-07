@@ -9,11 +9,38 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+variables:
+  imageRepository: 'ustpoc-docker-local.jfrog.io/dockeragent'
+  dockerfilePath: 'Dockerfile'
+  tag: '$(Build.BuildId)'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+steps:
+  - task: ArtifactoryToolsInstaller@1
+    displayName: Install jFrog Client from Artifactory
+    inputs:
+      artifactoryService: 'jFrog'
+      cliInstallationRepo: 'jfrog-cli'
+
+  - task: Docker@2
+    inputs:
+      repository: $(imageRepository)
+      command: 'build'
+      Dockerfile: '$(dockerfilePath)'
+      tags: '$(tag)'
+
+  - task: ArtifactoryDocker@1
+    inputs:
+      command: 'push'
+      artifactoryService: 'jFrog'
+      targetRepo: 'docker-local'
+      imageName: '$(imageRepository):$(tag)'
+      collectBuildInfo: true
+      buildName: '$(Build.DefinitionName)'
+      buildNumber: '$(Build.BuildNumber)'
+      includeEnvVars: true
+
+  - task: ArtifactoryPublishBuildInfo@1
+    inputs:
+      artifactoryService: 'jFrog'
+      buildName: '$(Build.DefinitionName)'
+      buildNumber: '$(Build.BuildNumber)'
