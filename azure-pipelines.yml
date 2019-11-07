@@ -1,0 +1,46 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  imageRepository: 'ustpoc-docker-local.jfrog.io/dockeragent'
+  dockerfilePath: 'Dockerfile'
+  tag: '$(Build.BuildId)'
+
+steps:
+  - task: ArtifactoryToolsInstaller@1
+    displayName: Install jFrog Client from Artifactory
+    inputs:
+      artifactoryService: 'jFrog'
+      cliInstallationRepo: 'jfrog-cli'
+
+  - task: Docker@2
+    inputs:
+      repository: $(imageRepository)
+      command: 'build'
+      Dockerfile: '$(dockerfilePath)'
+      tags: '$(tag)'
+
+  - task: ArtifactoryDocker@1
+    inputs:
+      command: 'push'
+      artifactoryService: 'jFrog'
+      targetRepo: 'docker-local'
+      imageName: '$(imageRepository):$(tag)'
+      collectBuildInfo: true
+      buildName: '$(Build.DefinitionName)'
+      buildNumber: '$(Build.BuildNumber)'
+      includeEnvVars: true
+
+  - task: ArtifactoryPublishBuildInfo@1
+    inputs:
+      artifactoryService: 'jFrog'
+      buildName: '$(Build.DefinitionName)'
+      buildNumber: '$(Build.BuildNumber)'
